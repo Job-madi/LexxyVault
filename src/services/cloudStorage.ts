@@ -6,6 +6,7 @@ import {
   GetSignedUrlResponse,
   Storage,
 } from '@google-cloud/storage';
+import fs from 'fs';
 
 export class CloudStorageRepository {
   private storage: Storage;
@@ -83,8 +84,8 @@ export class CloudStorageRepository {
     await this.storage.bucket(bucketName).deleteFiles(options);
   }
 
-  async deletefile(fileName:string): Promise<DeleteFileResponse>{
-    if(!this.fileExists(fileName)){
+  async deletefile(fileName: string): Promise<DeleteFileResponse> {
+    if (!this.fileExists(fileName)) {
       throw new Error(`File ${fileName} does not exist`);
     }
     return await this.bucket.file(fileName).delete();
@@ -95,24 +96,51 @@ export class CloudStorageRepository {
     return exists;
   }
 
+  async uploadFile(
+    fileName: string,
+    filePath: string,
+    onProgress?: (progress: number) => void,
+  ): Promise<void> {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File ${filePath} does not exist`);
+    }
+
+    const stats = fs.statSync(filePath);
+    const totalSize = stats.size;
+    let uploadedSize = 0;
+
+    return new Promise((resolve, reject) => {
+      fs.createReadStream(filePath)
+        .on('data', (chunk) => {
+          uploadedSize += chunk.length;
+          const progress = (uploadedSize / totalSize) * 100;
+
+          if (onProgress) {
+            onProgress(progress);
+          }
+        })
+        .pipe(this.bucket.file(fileName).createWriteStream())
+        .on('error', (err) => {
+          reject(new Error(`Error uploading file ${fileName}: ${err.message}`));
+        })
+        .on('finish', () => {
+          resolve();
+        });
+    });
+  }
 
   //Todo: Resumable uploads for large files
   //Todo: Normal uploads for small files : When uploading files less than 10MB, it is recommended that the resumable feature is disabled.
   //Todo: Upload Progress Monitoring
   //Todo: Remember for multiple file upload, we need to use the tranfserManager and goes for downloads too!
 
+  //Todo:In Future we can work on wheather user wants to make files or folers public or private + Retenion Period
 
+  /* Todo: Docs
+Integrity checks
+We recommend that you request an integrity check of the final uploaded object to be sure that it matches the source file. You can do this by calculating the MD5 digest of the source file and adding it to the Content-MD5 request header.
 
+Checking the integrity of the uploaded file is particularly important if you are uploading a large file over a long period of time, because there is an increased likelihood of the source file being modified over the course of the upload operation.
 
-//Todo:In Future we can work on wheather user wants to make files or folers public or private + Retenion Period
-
-
-
-
-
-
-
-
-
-
+*/
 }

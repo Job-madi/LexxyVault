@@ -44,6 +44,8 @@
     "@google-cloud/storage": "^7.14.0",
     "commander": "^12.1.0",
     "dotenv": "^16.4.5",
+    "inquirer": "^12.1.0",
+    "inquirer-file-selector": "^0.6.1",
     "tslib": "~2.7"
   },
   "volta": {
